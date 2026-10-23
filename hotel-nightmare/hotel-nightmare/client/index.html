@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HOTEL NIGHTMARE</title>
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="fxVignette"></div>
+<div id="fxDanger"></div>
+<canvas id="grain" width="160" height="90"></canvas>
+<div id="fxFlash"></div>
+
+<!-- ============ MENÚ / SALA INICIAL ============ -->
+<div id="menu" class="screen">
+  <div class="menuBg"></div>
+  <div class="menuWrap">
+    <h1 class="logo"><span>HOTEL</span> NIGHTMARE</h1>
+    <p class="tag">Una noche eterna. Un hotel que no quiere que te vayas.</p>
+
+    <div class="cols">
+      <section class="card" id="panelMain">
+        <h2>Entrar al hotel</h2>
+        <label>Tu nombre<input id="inName" maxlength="16" placeholder="Nombre" autocomplete="off"></label>
+        <button id="btnCreate" class="btn primary">Crear partida</button>
+        <div class="or">o únete con un código</div>
+        <div class="row">
+          <input id="inCode" maxlength="5" placeholder="A7K2P" autocomplete="off" spellcheck="false">
+          <button id="btnJoin" class="btn">Unirse</button>
+        </div>
+        <p id="menuErr" class="err"></p>
+        <p class="small">Puedes jugar solo: crea una partida e inicia directamente.</p>
+      </section>
+
+      <section class="card hidden" id="panelLobby">
+        <h2>Sala <span id="lobbyCode" class="code" title="Pulsa para copiar">-----</span></h2>
+        <p class="small">Comparte este código con tus amigos. <button id="btnCopy" class="link">Copiar</button></p>
+        <div class="players" id="lobbyPlayers"></div>
+        <label>Si el enemigo atrapa a un jugador
+          <select id="selMode">
+            <option value="downed" selected>Queda incapacitado (se puede rescatar)</option>
+            <option value="eliminated">Queda eliminado</option>
+            <option value="teamLoss">Derrota colectiva</option>
+          </select>
+        </label>
+        <label>Semilla del hotel (opcional)<input id="inSeed" maxlength="24" placeholder="aleatoria" autocomplete="off"></label>
+        <p id="lobbyHint" class="small"></p>
+        <div class="row">
+          <button id="btnStart" class="btn primary">Iniciar partida</button>
+          <button id="btnLeave" class="btn">Abandonar sala</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Controles</h2>
+        <ul class="keys">
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> moverse</li>
+          <li><kbd>Ratón</kbd> mirar</li>
+          <li><kbd>Shift</kbd> correr (con resistencia)</li>
+          <li><kbd>E</kbd> interactuar / recoger / abrir</li>
+          <li><kbd>F</kbd> linterna</li>
+          <li><kbd>Tab</kbd> ver objetivos</li>
+          <li><kbd>Esc</kbd> pausa y ajustes</li>
+        </ul>
+        <h2>Ajustes</h2>
+        <div id="settingsMenu"></div>
+      </section>
+    </div>
+    <div id="connBadgeMenu" class="badge"></div>
+  </div>
+</div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+  <div id="objectives"></div>
+  <div id="topInfo"><span id="exitState"></span></div>
+  <div id="roomNow"></div>
+  <div id="connHud"><i id="connDot"></i><span id="connTxt">--</span><div id="mates"></div></div>
+  <div id="prompt"></div>
+  <div id="toasts"></div>
+  <div id="inventory"></div>
+  <div id="statusBars">
+    <div class="bar"><div id="stamina"></div></div>
+  </div>
+  <div id="flashHud"><div class="batt"><div id="battFill"></div></div><span id="battTxt"></span></div>
+  <div id="warn"></div>
+  <div id="downedOverlay" class="hidden"></div>
+  <div id="spectate" class="hidden"></div>
+</div>
+
+<div id="noteView" class="overlay hidden"><div class="paper"><p id="noteText"></p><p class="small">[E] cerrar</p></div></div>
+<div id="keypad" class="overlay hidden">
+  <div class="kp"><h3>PANEL DE SEGURIDAD</h3><div id="kpDisp">----</div><p class="small">Escribe el código · <kbd>Enter</kbd> confirmar · <kbd>Esc</kbd> salir</p><p id="kpMsg" class="small"></p></div>
+</div>
+
+<div id="clickPlay" class="overlay hidden"><div class="box"><h2>HOTEL NIGHTMARE</h2><p>Haz clic para continuar</p></div></div>
+<div id="pause" class="overlay hidden">
+  <div class="box">
+    <h2>Pausa</h2>
+    <p class="small">La partida sigue en marcha para tus compañeros.</p>
+    <div id="settingsPause"></div>
+    <div class="row"><button id="btnResume" class="btn primary">Continuar</button><button id="btnQuit" class="btn">Salir de la partida</button></div>
+  </div>
+</div>
+<div id="jump" class="hidden"><canvas id="jumpCanvas"></canvas></div>
+<div id="result" class="overlay hidden"><div class="box wide" id="resultBox"></div></div>
+<div id="connLost" class="overlay hidden"><div class="box"><h2>Conexión perdida</h2><p>Se ha interrumpido la conexión con el servidor.</p><button id="btnLostMenu" class="btn primary">Volver al menú</button></div></div>
+<div id="loading" class="overlay hidden"><div class="box"><h2>Generando el hotel…</h2></div></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

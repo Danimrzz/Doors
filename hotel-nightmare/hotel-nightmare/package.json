@@ -1,0 +1,15 @@
+{
+  "name": "hotel-nightmare",
+  "version": "1.0.0",
+  "description": "HOTEL NIGHTMARE - juego de terror cooperativo en primera persona (Three.js + WebSocket)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node tests/run-all.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
