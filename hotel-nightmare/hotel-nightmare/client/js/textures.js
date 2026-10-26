@@ -148,3 +148,47 @@ export function nameTexture(name) {
 }
 
 export const WALL_KINDS = Object.keys(WALLS);
+
+// ---------- anomalías ----------
+export function bloodTextTexture(text) {
+  const [c, ctx] = mk(512, 192);
+  ctx.clearRect(0, 0, 512, 192);
+  ctx.font = 'bold 76px Georgia'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = 76; while (ctx.measureText(text).width > 480 && size > 30) { size -= 4; ctx.font = `bold ${size}px Georgia`; }
+  ctx.shadowColor = '#300'; ctx.shadowBlur = 8; ctx.fillStyle = '#7a0b0b'; ctx.fillText(text, 256, 84);
+  ctx.shadowBlur = 0; ctx.fillStyle = '#5a0606';
+  const w = ctx.measureText(text).width, x0 = 256 - w / 2;
+  for (let i = 0; i < 14; i++) { const x = x0 + Math.random() * w, len = 20 + Math.random() * 80; ctx.fillRect(x, 100, 3 + Math.random() * 3, len); ctx.beginPath(); ctx.arc(x + 2, 100 + len, 4, 0, 6.28); ctx.fill(); }
+  return toTex(c);
+}
+export function handsTexture() {
+  const [c, ctx] = mk(256, 256); ctx.clearRect(0, 0, 256, 256);
+  const hand = (x, y, s, rot) => {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s); ctx.fillStyle = 'rgba(95,8,8,.85)';
+    ctx.beginPath(); ctx.ellipse(0, 22, 22, 26, 0, 0, 6.28); ctx.fill();
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.ellipse(i * 9, -14 - (2 - Math.abs(i)) * 5, 4.5, 20, i * 0.12, 0, 6.28); ctx.fill(); }
+    ctx.beginPath(); ctx.ellipse(-26, 6, 5, 15, -0.9, 0, 6.28); ctx.fill();
+    for (let k = 0; k < 4; k++) ctx.fillRect(-20 + k * 12, 40, 3, 20 + Math.random() * 60);
+    ctx.restore();
+  };
+  hand(80, 90, 1.1, -0.2); hand(170, 130, 1.0, 0.3); hand(110, 170, 0.9, 0.1);
+  return toTex(c);
+}
+export function eyesPaintingTexture() {
+  const [c, ctx] = mk(128, 160);
+  ctx.fillStyle = '#080606'; ctx.fillRect(0, 0, 128, 160);
+  const g = ctx.createRadialGradient(64, 80, 5, 64, 80, 90); g.addColorStop(0, 'rgba(60,20,16,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 160);
+  for (const [x, y, s] of [[40, 62, 1], [88, 62, 1], [64, 105, 0.7]]) {
+    ctx.fillStyle = '#e8e2d0'; ctx.beginPath(); ctx.ellipse(x, y, 17 * s, 11 * s, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, y, 5 * s, 0, 6.28); ctx.fill();
+  }
+  return toTex(c);
+}
+export function faceTexture() {
+  const [c, ctx] = mk(128, 192); ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, 128, 192);
+  ctx.fillStyle = '#cfc9b6'; ctx.beginPath(); ctx.ellipse(64, 92, 38, 62, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = '#000'; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(64 + sx * 16, 78, 9, 15, sx * 0.2, 0, 6.28); ctx.fill(); }
+  ctx.beginPath(); ctx.ellipse(64, 128, 13, 26, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = '#fff'; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(64 + sx * 16, 80, 2.5, 0, 6.28); ctx.fill(); }
+  return toTex(c);
+}
