@@ -7,12 +7,19 @@ import { WorldView } from './world.js';
 import { buildEnemy, animateEnemy, buildAvatar, buildSilhouette } from './models.js';
 import { Player } from './player.js';
 import * as UI from './ui.js';
+import { nameTexture, radialTexture } from './textures.js';
+import { Anomalies } from './anomalies.js';
+import { buildDetails } from './details.js';
+import { buildDetails2 } from './details2.js';
+import { buildDetails3 } from './details3.js';
+import { buildDetails4 } from './details4.js';
+import { buildDetails5 } from './details5.js';
 
 const $ = UI.$;
 const QUALITY = {
-  low: { pr: 0.7, shadow: 0, pool: 4, fog: 0.058, power: 11 },
-  medium: { pr: 1, shadow: 1024, pool: 7, fog: 0.05, power: 11 },
-  high: { pr: 1.5, shadow: 2048, pool: 10, fog: 0.046, power: 11 },
+  low: { pr: 0.7, shadow: 0, pool: 3, fog: 0.06, power: 13 },
+  medium: { pr: 1, shadow: 512, pool: 4, fog: 0.052, power: 13 },
+  high: { pr: 1.25, shadow: 1024, pool: 6, fog: 0.046, power: 12 },
 };
 const AVATAR_COLORS = [0x3f6fa8, 0x4a8a56, 0xa8743f, 0x8a4aa8, 0xa84a5a, 0x4aa8a0];
 const angLerp = (a, b, k) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
@@ -22,7 +29,7 @@ export class Game {
     this.canvas = canvas; this.net = net; this.audio = audio; this.running = false;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.2;
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.applyQuality();
     addEventListener('resize', () => this.resize());
@@ -33,7 +40,7 @@ export class Game {
   }
   applyQuality() {
     const q = QUALITY[UI.settings.quality] || QUALITY.medium; this.q = q;
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, q.pr)); this.resize();
+    this.pr = Math.min(devicePixelRatio || 1, q.pr); this.renderer.setPixelRatio(this.pr); this.resize();
     if (this.flash) { this.flash.castShadow = q.shadow > 0; if (q.shadow) { this.flash.shadow.mapSize.set(q.shadow, q.shadow); if (this.flash.shadow.map) { this.flash.shadow.map.dispose(); this.flash.shadow.map = null; } } }
     if (this.scene && this.scene.fog) this.scene.fog.density = q.fog * (this.view && this.view.emergency ? 1.2 : 1);
   }
@@ -53,15 +60,22 @@ export class Game {
     this.missions = this.map.missions;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x030406);
     this.scene.fog = new THREE.FogExp2(0x040507, this.q.fog);
-    this.scene.add(new THREE.HemisphereLight(0x2b3448, 0x0a0806, 0.5 * this.diff.ambient));
-    this.scene.add(new THREE.AmbientLight(0x151a24, 0.7 * this.diff.ambient));
+    this.scene.add(new THREE.HemisphereLight(0x5a4c38, 0x1a1208, 1.0 * this.diff.ambient));
+    this.scene.add(new THREE.AmbientLight(0x2a2418, 1.0 * this.diff.ambient));
     this.view = new WorldView(this.scene, this.world, { glow: this.diff.glow, lightPool: this.q.pool, lightPower: this.q.power });
+    this.anom = new Anomalies(this.view, this.map, this.world, this.seed); this.anomSeen = new Set(); this.lastRoom = -1;
+    try { buildDetails(this.view, this.map, this.world, this.seed); } catch (e) { console.warn('detalles', e); }
+    try { buildDetails2(this.view, this.map, this.world, this.seed); } catch (e) { console.warn('detalles2', e); }
+    try { buildDetails3(this.view, this.map, this.world, this.seed); } catch (e) { console.warn('detalles3', e); }
+    try { buildDetails4(this.view, this.map, this.world); } catch (e) { console.warn('detalles4', e); }
+    try { buildDetails5(this.view, this.map, this.world); } catch (e) { console.warn('detalles5', e); }
+    this.buildDust();
     if (this.power && this.map.power) this.view.setPower(true);
     if (this.exitUnlocked) { this.view.setDoor(0, !!this.world.doorOpen[0], false, true); this.view.setEmergency(true); }
     this.camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 120); this.camera.rotation.order = 'YXZ';
     this.scene.add(this.camera);
     // linterna
-    this.flash = new THREE.SpotLight(0xfff0d6, 60, 32, this.diff.flAngle, 0.55, 1.6);
+    this.flash = new THREE.SpotLight(0xfff0d6, 60, 24, this.diff.flAngle, 0.55, 1.6);
     this.flash.castShadow = this.q.shadow > 0; if (this.q.shadow) { this.flash.shadow.mapSize.set(this.q.shadow, this.q.shadow); this.flash.shadow.bias = -0.0006; this.flash.shadow.camera.near = 0.15; this.flash.shadow.camera.far = 32; }
     this.scene.add(this.flash); this.scene.add(this.flash.target); this.flQuat = new THREE.Quaternion();
     // jugador
@@ -174,7 +188,7 @@ export class Game {
       case 'revived': this.states[m.id] = 'alive'; this.refreshMates(); if (m.id === this.me) { this.myState = 'alive'; this.downInfo = null; this.player.frozen = false; $('downedOverlay').classList.add('hidden'); UI.toast('Tus compañeros te han puesto en pie.', 'big'); } else UI.toast(`${m.name} ha sido rescatado.`); break;
       case 'dead': this.states[m.id] = 'dead'; this.refreshMates(); UI.toast(`${m.name} no ha sobrevivido.`, 'warn'); if (m.id === this.me) this.becomeSpectator('dead'); break;
       case 'escaped': this.states[m.id] = 'escaped'; this.refreshMates(); if (m.id === this.me) { this.audio.win(); UI.toast('¡Has escapado del hotel!', 'big'); this.becomeSpectator('escaped'); } else UI.toast(`${m.name} ha escapado.`, 'big'); break;
-      case 'players': this.playersList = m.players; for (const p of m.players) { this.names[p.id] = p.name; this.states[p.id] = p.state; } this.refreshMates(); break;
+      case 'players': this.playersList = m.players; for (const p of m.players) { this.names[p.id] = p.name; this.states[p.id] = p.state; const r = this.remotes.get(p.id); if (r && r.nm !== p.name) { r.nm = p.name; r.obj.userData.spr.material.map = nameTexture(p.name); r.obj.userData.spr.material.needsUpdate = true; } } this.refreshMates(); break;
       case 'join': UI.toast(`${m.name} se ha unido a la partida.`); break;
       case 'leave': UI.toast(`${m.name} ha abandonado la partida.`, 'warn'); this.dropRemote(m.id); break;
       case 'hz': return this.onHazard(m);
@@ -282,9 +296,7 @@ export class Game {
     this.audio.setChase(0); stats.result === 'victory' ? this.audio.win() : this.audio.lose();
     UI.show('pause', false); UI.show('clickPlay', false); UI.show('keypad', false); UI.show('noteView', false);
     UI.showResult(stats, '', () => { this.resultShown = false; this.stop(); if (this.onExit) this.onExit(); });
-  }
-
-  // ================= INTERACCIÓN =================
+      // ================= INTERACCIÓN =================
   scan() {
     const p = this.player, fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), w = this.world;
     if (this.hiddenSpot) return { kind: 'unhide', text: 'Pulsa E para salir del escondite', act: true };
@@ -345,8 +357,18 @@ export class Game {
   loop(now) {
     if (!this.running) return;
     const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; this.time += dt;
+    this.adapt(dt);
     try { this.update(dt); this.renderer.render(this.scene, this.camera); } catch (e) { console.error(e); }
     this.raf = requestAnimationFrame((t) => this.loop(t));
+  }
+  // resolución dinámica: si el equipo va justo, baja la resolución de render (y las sombras en último caso); si sobra, la sube
+  adapt(dt) {
+    this.ema = this.ema ? this.ema + (dt - this.ema) * 0.05 : dt; this.adT = (this.adT || 0) + dt; if (this.adT < 1.5) return; this.adT = 0;
+    const base = Math.min(devicePixelRatio || 1, this.q.pr);
+    if (this.ema > 0.027) {
+      if (this.pr > 0.55) { this.pr = Math.max(0.55, this.pr - 0.12); this.renderer.setPixelRatio(this.pr); this.resize(); }
+      else if (this.flash && this.flash.castShadow) { this.flash.castShadow = false; UI.toast('Rendimiento bajo: sombras de la linterna desactivadas.'); }
+    } else if (this.ema < 0.017 && this.pr < base) { this.pr = Math.min(base, this.pr + 0.06); this.renderer.setPixelRatio(this.pr); this.resize(); }
   }
   update(dt) {
     const p = this.player, cam = this.camera;
@@ -384,7 +406,7 @@ export class Game {
     this.updateFlashlight(dt);
     this.view.update(dt, cam.position);
     this.updateRemotes(dt);
-    this.updateEnemy(dt);
+    this.updateEnemy(dt); this.updateAnomalies(dt); this.updateDust(dt);
     this.updateSilhouette(dt);
     this.updateEffects(dt);
     this.audio.setListener(cam.position.x, cam.position.y, cam.position.z, -Math.sin(p.yaw), -Math.cos(p.yaw));
@@ -451,7 +473,7 @@ export class Game {
   updateEnemy(dt) {
     const e = this.enemy, t = e.tgt, p = this.player;
     if (this.jump) return;
-    if (!t) { e.obj.visible = false; e.light.intensity = 0; e.near = 99; this.audio.breathUpdate && this.audio.breath && this.audio.breathUpdate({ x: p.x, y: 1, z: p.z }, 0); return; }
+    if (!t) { this.view.enemyPos = null; e.obj.visible = false; e.light.intensity = 0; e.near = 99; this.audio.breathUpdate && this.audio.breath && this.audio.breathUpdate({ x: p.x, y: 1, z: p.z }, 0); return; }
     if (!e.vis) { e.obj.position.set(t.x, 0, t.z); e.prevX = t.x; e.prevZ = t.z; e.vis = true; }
     const k = 1 - Math.exp(-dt * 13); const ox = e.obj.position.x, oz = e.obj.position.z;
     e.obj.position.x += (t.x - ox) * k; e.obj.position.z += (t.z - oz) * k;
@@ -460,6 +482,12 @@ export class Game {
     animateEnemy(e.obj, dt, Math.min(sp, 6), t.st, this.time);
     const dist = Math.hypot(e.obj.position.x - p.x, e.obj.position.z - p.z); e.near = dist;
     const pos = { x: e.obj.position.x, y: 0.2, z: e.obj.position.z };
+    this.view.enemyPos = t.sil ? null : { x: pos.x, z: pos.z };
+    // al verlo de frente por primera vez: golpe de sonido y sacudida
+    { const dx = pos.x - p.x, dz = pos.z - p.z, dd = Math.hypot(dx, dz) || 1, fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw), dot = (dx * fx + dz * fz) / dd;
+      const seen = !t.sil && dot > 0.8 && dd < 16 && this.world.los(p.x, p.z, pos.x, pos.z);
+      if (seen && !e.gaze && this.myState === 'alive' && this.time - (e.lastGaze ?? -99) > 12) { e.gaze = true; e.lastGaze = this.time; this.audio.stinger(); this.audio.heartbeat(1); this.shake = Math.max(this.shake, 0.22); this.fovKick = Math.max(this.fovKick, 9); }
+      if (!seen && e.gaze && this.time - e.lastGaze > 3) e.gaze = false; }
     // inicio de persecución dirigida a mí: luces parpadeando, chillido y sacudida (estilo "Rush")
     const chasingMe = t.st === 3 && t.tg && !t.sil;
     if (chasingMe && !e.wasChase && this.myState === 'alive' && this.time - (e.lastOnset ?? -99) > 10) { e.lastOnset = this.time; this.chaseOnset(); }
@@ -473,6 +501,31 @@ export class Game {
     e.growlT -= dt; if (e.growlT <= 0 && !t.sil && dist < 24 && (t.st === 3 || t.st === 4 || dist < 10)) { e.growlT = 3.5 + Math.random() * 5; this.audio.growl({ x: pos.x, y: 1.5, z: pos.z }); }
     e.light.position.set(pos.x, 1.5, pos.z); e.light.intensity = dist < 14 ? 1.6 * (1 - dist / 14) : 0;
     this.audio.chaseTarget = t.tg;
+  }
+  // polvo flotando en el aire (se ve a contraluz de la linterna y las lámparas)
+  buildDust() {
+    const N = 140, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 14; pos[i * 3 + 1] = Math.random() * 3; pos[i * 3 + 2] = (Math.random() - 0.5) * 14; }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ map: radialTexture('255,235,200'), size: 0.07, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+    this.dust.frustumCulled = false; this.scene.add(this.dust); this.dustPos = pos;
+  }
+  updateDust(dt) {
+    const p = this.player, pos = this.dustPos; this.dust.position.set(p.x, 0, p.z);
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i] += Math.sin(this.time * 0.3 + i) * dt * 0.05; pos[i + 1] += Math.sin(this.time * 0.2 + i * 0.7) * dt * 0.04 - dt * 0.01; pos[i + 2] += Math.cos(this.time * 0.25 + i) * dt * 0.05;
+      for (const o of [0, 2]) { if (pos[i + o] > 7) pos[i + o] -= 14; else if (pos[i + o] < -7) pos[i + o] += 14; }
+      if (pos[i + 1] < 0) pos[i + 1] += 3; else if (pos[i + 1] > 3) pos[i + 1] -= 3;
+    }
+    this.dust.geometry.attributes.position.needsUpdate = true;
+  }
+  // anomalías: aviso al entrar por primera vez en una habitación alterada y maniquíes que giran
+  updateAnomalies(dt) {
+    const p = this.player, rid = this.world.roomAt(p.x, p.z);
+    this.anom.update(dt, p, p.yaw);
+    if (rid !== this.lastRoom) {
+      this.lastRoom = rid;
+      if (rid > 0 && this.anom.rooms.has(rid) && !this.anomSeen.has(rid)) { this.anomSeen.add(rid); this.audio.stinger(); this.audio.whisper({ x: p.x - Math.sin(p.yaw) * 1.5, y: 1.5, z: p.z - Math.cos(p.yaw) * 1.5 }); this.shake = Math.max(this.shake, 0.08); UI.toast('Algo no está bien en esta habitación…', 'warn'); }
+    }
   }
   chaseOnset() {
     this.flickT = 2.6; this.shake = Math.max(this.shake, 0.5); this.fovKick = 16;
@@ -492,14 +545,14 @@ export class Game {
     if (t) { const d = e.near; danger = Math.max(0, 1 - d / 18) ** 1.4; if (t.st === 3 && t.tg) { danger = Math.max(danger, 0.65); chase = 1; } else if (t.st === 3 && d < 25) chase = 0.5; }
     this.danger += (danger - this.danger) * Math.min(1, dt * 3);
     $('fxDanger').style.opacity = this.myState === 'alive' ? Math.min(0.9, this.danger * (0.7 + 0.3 * Math.sin(this.time * (4 + this.danger * 6)))) : 0;
-    this.audio.setChase(chase);
+    this.audio.setChase(chase); this.audio.rumble(this.myState === 'alive' ? Math.min(1, this.danger * 1.1) : 0);
     this.hbT -= dt; if (this.danger > 0.2 && this.hbT <= 0 && this.myState === 'alive') { this.hbT = 1.15 - this.danger * 0.6; this.audio.heartbeat(0.35 + this.danger * 0.65); }
     $('warn').textContent = this.myState === 'alive' && t && t.st === 3 && t.tg ? 'CORRE' : ($('warn').textContent === 'CORRE' ? '' : $('warn').textContent);
     // parpadeo de luces: aviso cuando el enemigo está cerca y apagón intermitente al empezar la persecución
     this.flickT = Math.max(0, (this.flickT || 0) - dt); this.flickN = (this.flickN || 0) - dt;
     let amt = 0; if (this.flickT > 0) amt = 0.9; else if (t && !t.sil && e.near < 13 && this.myState === 'alive') amt = 0.55 * (1 - e.near / 13);
     if (this.flickN <= 0) { this.flickN = 0.05 + Math.random() * 0.09; this.flickV = amt > 0 && Math.random() < (this.flickT > 0 ? 0.6 : 0.15 + amt * 0.35) ? 1 - amt * (0.45 + Math.random() * 0.55) : 1; }
-    this.renderer.toneMappingExposure = 1.05 * (amt > 0 ? (this.flickV ?? 1) : 1);
+    this.renderer.toneMappingExposure = 1.2 * (amt > 0 ? (this.flickV ?? 1) : 1);
     if (!this.jump) this.fovKick *= Math.max(0, 1 - dt * 2.5);
     // número de habitación actual (como en Doors)
     const rid = this.world.roomAt(p.x, p.z), rm = rid > 0 ? this.map.rooms[rid] : null, rt = rm ? 'HABITACIÓN ' + rm.number : '';
@@ -510,3 +563,4 @@ export class Game {
     if (this.scene.fog) this.scene.fog.density += ((this.q.fog * (this.final ? 1.25 : 1)) - this.scene.fog.density) * Math.min(1, dt);
   }
 }
+  }
