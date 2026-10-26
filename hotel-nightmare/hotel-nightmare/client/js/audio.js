@@ -72,6 +72,18 @@ export class AudioEngine {
   }
   setTension(v) { this.tension = v; if (this.tensionGain) this.tensionGain.gain.setTargetAtTime(0.004 + v * 0.02, this.ctx.currentTime, 1); }
   setChase(v) { this.chase = v; if (this.chaseGain) this.chaseGain.gain.setTargetAtTime(v * 0.22, this.ctx.currentTime, 0.25); }
+  // proximidad del enemigo: retumbo de subgraves + un pitido agudo y disonante que crece al acercarse
+  rumble(v) {
+    if (!this.ctx) return; const c = this.ctx;
+    if (!this.rum) {
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130; const g = c.createGain(); g.gain.value = 0; lp.connect(g); g.connect(this.sfx);
+      for (const f of [31, 47]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(lp); o.start(); }
+      const tl = c.createOscillator(), tg = c.createGain(); tl.frequency.value = 5.5; tg.gain.value = 0.5; const tb = c.createGain(); tb.gain.value = 0.5; tl.connect(tg); tg.connect(tb.gain); lp.disconnect(); lp.connect(tb); tb.connect(g); tl.start();
+      const wh = c.createOscillator(), wh2 = c.createOscillator(), wg = c.createGain(); wh.type = 'sine'; wh.frequency.value = 3100; wh2.type = 'sine'; wh2.frequency.value = 3290; wg.gain.value = 0; wh.connect(wg); wh2.connect(wg); wg.connect(this.sfx); wh.start(); wh2.start();
+      this.rum = { g, wg };
+    }
+    const t = c.currentTime; this.rum.g.gain.setTargetAtTime(v * 0.9, t, 0.3); this.rum.wg.gain.setTargetAtTime(Math.max(0, v - 0.25) * 0.05, t, 0.4);
+  }
   duck(on) { if (this.amb && this.ctx) this.amb.gain.setTargetAtTime(on ? this.vol.amb * 0.15 : this.vol.amb, this.ctx.currentTime, 0.4); }
   // ---------- efectos ----------
   step(run) { this.burst({ dur: 0.1, f0: run ? 700 : 450, f1: 160, gain: run ? 0.22 : 0.13, q: 0.8 }); this.tone({ f0: 80, f1: 45, dur: 0.1, gain: run ? 0.18 : 0.1 }); }
